@@ -3,12 +3,7 @@ var fs = require('fs')
 var path = require('path')
 var proc = require('child_process')
 var events = require('events')
-
-var toErrno = function(err) {
-  if (err.code === 'EPERM') return -1
-  if (err.code === 'ENOENT') return -2
-  return -1
-}
+var errno = require('./errno')
 
 module.exports = function(from, mnt) {
   var handlers = {}
@@ -25,14 +20,14 @@ module.exports = function(from, mnt) {
 
   handlers.getattr = function(pathname, cb) {
     fs.stat(path.join(from, pathname), function(err, st) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       cb(0, st)
     })
   }
 
   handlers.readdir = function(pathname, cb) {
     fs.readdir(path.join(from, pathname), function(err, files) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       cb(0, files)
     })
   }
@@ -49,7 +44,7 @@ module.exports = function(from, mnt) {
     flags = toFlag(flags)
 
     fs.open(pathname, flags, function(err, fd) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       if (flags === 'w') that.emit('change', {type:'create', path:pathname})
       cb(0, fd)
     })
@@ -57,14 +52,14 @@ module.exports = function(from, mnt) {
 
   handlers.release = function(pathname, handle, cb) {
     fs.close(handle, function(err) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       cb(0)
     })
   }
 
   handlers.read = function(pathname, offset, len, buf, handle, cb) {
     fs.read(handle, buf, 0, len, offset, function(err, bytes) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       cb(0, bytes)
     })
   }
@@ -72,7 +67,7 @@ module.exports = function(from, mnt) {
   handlers.truncate = function(pathname, size, cb) {
     pathname = path.join(from, pathname)
     fs.truncate(pathname, function(err) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       that.emit('change', {type:'truncate', path:pathname, size:size})
       cb(0)
     })
@@ -81,7 +76,7 @@ module.exports = function(from, mnt) {
   handlers.write = function(pathname, offset, len, buf, handle, cb) {
     pathname = path.join(from, pathname)
     fs.write(handle, buf, 0, len, offset, function(err, bytes) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       that.emit('change', {type:'write', path:pathname, offset:offset, bytes:bytes})
       cb(bytes)
     })
@@ -90,7 +85,7 @@ module.exports = function(from, mnt) {
   handlers.unlink = function(pathname, cb) {
     pathname = path.join(from, pathname)
     fs.unlink(pathname, function(err) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       that.emit('change', {type:'unlink', path:pathname})
       cb(0)
     })
@@ -100,7 +95,7 @@ module.exports = function(from, mnt) {
     src = path.join(from, src)
     dst = path.join(from, dst)
     fs.rename(src, dst, function(err) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       that.emit('change', {type:'rename', path:src, destination:dst})
       cb(0)
     })
@@ -109,7 +104,7 @@ module.exports = function(from, mnt) {
   handlers.mkdir = function(pathname, mode, cb) {
     pathname = path.join(from, pathname)
     fs.mkdir(pathname, mode, function(err) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       that.emit('change', {type:'mkdir', path:pathname, mode:mode})
       cb(0)
     })
@@ -118,7 +113,7 @@ module.exports = function(from, mnt) {
   handlers.rmdir = function(pathname, cb) {
     pathname = path.join(from, pathname)
     fs.rmdir(pathname, function(err) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       that.emit('change', {type:'rmdir', path:pathname})
       cb(0)
     })
@@ -131,7 +126,7 @@ module.exports = function(from, mnt) {
   handlers.chmod = function(pathname, mode, cb) {
     pathname = path.join(from, pathname)
     fs.chmod(pathname, mode, function(err) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       that.emit('change', {type:'chmod', path:pathname, mode:mode})
       cb(0)
     })
@@ -140,14 +135,14 @@ module.exports = function(from, mnt) {
   handlers.create = function(pathname, mode, cb) {
     pathname = path.join(from, pathname)
     fs.open(pathname, 'a', mode, function(err, fd) {
-      if (err) return cb(toErrno(err))
+      if (err) return cb(-errno(err))
       that.emit('change', {type:'create', path:pathname, mode:mode})
       cb(0, fd)
     })
   }
 
   handlers.getxattr = function(pathname, cb) {
-    cb(toErrno(err))
+    cb(-errno(err))
   }
 
   handlers.setxattr = function(pathname, name, value, size, a, b, cb) {
