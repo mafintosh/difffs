@@ -39,7 +39,6 @@ diff.on('change', function(change) {
 
 On OSX you'll need the following
 
-* boot2docker, https://github.com/boot2docker/boot2docker
 * osx fuse, http://sourceforge.net/projects/osxfuse/files/latest/download?source=files
 * pkg-config, `brew install pkg-config`
 
