@@ -13,7 +13,13 @@ var toErrno = function(err) {
 module.exports = function(from, mnt) {
   var handlers = {}
   var that = new events.EventEmitter()
-  var filenames = []
+
+  that.directory = from
+  that.mountpoint = mnt
+
+  that.on('change', function(change) {
+    that.emit(change.type, change)
+  })
 
   from = path.resolve(from)
 
@@ -39,8 +45,12 @@ module.exports = function(from, mnt) {
   }
 
   handlers.open = function(pathname, flags, cb) {
-    fs.open(path.join(from, pathname), toFlag(flags), function(err, fd) {
+    pathname = path.join(from, pathname)
+    flags = toFlag(flags)
+
+    fs.open(pathname, flags, function(err, fd) {
       if (err) return cb(toErrno(err))
+      if (flags === 'w') that.emit('change', {type:'create', path:pathname})
       cb(0, fd)
     })
   }
@@ -60,43 +70,56 @@ module.exports = function(from, mnt) {
   }
 
   handlers.truncate = function(pathname, size, cb) {
-    fs.truncate(path.join(from, pathname), function(err) {
+    pathname = path.join(from, pathname)
+    fs.truncate(pathname, function(err) {
       if (err) return cb(toErrno(err))
+      that.emit('change', {type:'truncate', path:pathname, size:size})
       cb(0)
     })
   }
 
   handlers.write = function(pathname, offset, len, buf, handle, cb) {
+    pathname = path.join(from, pathname)
     fs.write(handle, buf, 0, len, offset, function(err, bytes) {
       if (err) return cb(toErrno(err))
+      that.emit('change', {type:'write', path:pathname, offset:offset, bytes:bytes})
       cb(bytes)
     })
   }
 
   handlers.unlink = function(pathname, cb) {
-    fs.unlink(path.join(from, pathname), function(err) {
+    pathname = path.join(from, pathname)
+    fs.unlink(pathname, function(err) {
       if (err) return cb(toErrno(err))
+      that.emit('change', {type:'unlink', path:pathname})
       cb(0)
     })
   }
 
   handlers.rename = function(src, dst, cb) {
-    fs.rename(path.join(from, src), path.join(from, dst), function(err) {
+    src = path.join(from, src)
+    dst = path.join(from, dst)
+    fs.rename(src, dst, function(err) {
       if (err) return cb(toErrno(err))
+      that.emit('change', {type:'rename', path:src, destination:dst})
       cb(0)
     })
   }
 
   handlers.mkdir = function(pathname, mode, cb) {
-    fs.mkdir(path.join(from, pathname), mode, function(err) {
+    pathname = path.join(from, pathname)
+    fs.mkdir(pathname, mode, function(err) {
       if (err) return cb(toErrno(err))
+      that.emit('change', {type:'mkdir', path:pathname, mode:mode})
       cb(0)
     })
   }
 
   handlers.rmdir = function(pathname, cb) {
-    fs.rmdir(path.join(from, pathname), function(err) {
+    pathname = path.join(from, pathname)
+    fs.rmdir(pathname, function(err) {
       if (err) return cb(toErrno(err))
+      that.emit('change', {type:'rmdir', path:pathname})
       cb(0)
     })
   }
@@ -106,15 +129,19 @@ module.exports = function(from, mnt) {
   }
 
   handlers.chmod = function(pathname, mode, cb) {
-    fs.chmod(path.join(from, pathname), mode, function(err) {
+    pathname = path.join(from, pathname)
+    fs.chmod(pathname, mode, function(err) {
       if (err) return cb(toErrno(err))
+      that.emit('change', {type:'chmod', path:pathname, mode:mode})
       cb(0)
     })
   }
 
   handlers.create = function(pathname, mode, cb) {
-    fs.open(path.join(from, pathname), 'a', mode, function(err, fd) {
+    pathname = path.join(from, pathname)
+    fs.open(pathname, 'a', mode, function(err, fd) {
       if (err) return cb(toErrno(err))
+      that.emit('change', {type:'create', path:pathname, mode:mode})
       cb(0, fd)
     })
   }

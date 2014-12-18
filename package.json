@@ -1,10 +1,14 @@
 {
   "name": "difffs",
   "version": "0.0.0",
-  "description": "WIP - nothing to see here",
+  "description": "fuse based filesystem that notifies you when changes happen",
   "main": "index.js",
+  "bin": {
+    "difffs": "./bin.js"
+  },
   "dependencies": {
-    "fuse4js": "bcle/fuse4js"
+    "fuse4js": "bcle/fuse4js",
+    "minimist": "^1.1.0"
   },
   "devDependencies": {},
   "repository": {
