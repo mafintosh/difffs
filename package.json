@@ -1,0 +1,20 @@
+{
+  "name": "difffs",
+  "version": "0.0.0",
+  "description": "WIP - nothing to see here",
+  "main": "index.js",
+  "dependencies": {
+    "fuse4js": "bcle/fuse4js"
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mafintosh/difffs.git"
+  },
+  "author": "Mathias Buus (@mafintosh)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/mafintosh/difffs/issues"
+  },
+  "homepage": "https://github.com/mafintosh/difffs"
+}
