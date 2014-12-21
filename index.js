@@ -77,7 +77,7 @@ module.exports = function(from, mnt) {
     pathname = path.join(from, pathname)
     fs.write(handle, buf, 0, len, offset, function(err, bytes) {
       if (err) return cb(-errno(err))
-      that.emit('change', {type:'write', path:pathname, offset:offset, bytes:bytes})
+      that.emit('change', {type:'write', path:pathname, offset:offset, bytes:bytes, data:buf})
       cb(bytes)
     })
   }

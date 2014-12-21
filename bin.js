@@ -15,7 +15,7 @@ var diff = difffs(argv._[0], argv._[1])
 diff.on('change', function(change) {
   var info = Object.keys(change)
     .map(function(k) {
-      if (k === 'type' || k === 'path') return null
+      if (k === 'type' || k === 'path' || k === 'data') return null
       return k+': '+change[k]
     })
     .filter(function(v) {
