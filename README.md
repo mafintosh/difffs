@@ -12,7 +12,7 @@ npm install -g difffs
 difffs [directory] [mountpoint]
 ```
 
-For example to mount your home folder do `/tmp/mnt` do
+For example to mount your home folder to `/tmp/mnt` do
 
 ```
 mkdir /tmp/mnt
