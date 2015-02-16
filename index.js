@@ -60,7 +60,7 @@ module.exports = function(from, mnt) {
   handlers.read = function(pathname, offset, len, buf, handle, cb) {
     fs.read(handle, buf, 0, len, offset, function(err, bytes) {
       if (err) return cb(-errno(err))
-      cb(0, bytes)
+      cb(bytes)
     })
   }
 
