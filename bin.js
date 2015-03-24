@@ -34,6 +34,5 @@ diff.on('mount', function () {
     })
   }
 
-  process.on('SIGTERM', exit)
   process.on('SIGINT', exit)
 })
