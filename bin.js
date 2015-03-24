@@ -29,10 +29,14 @@ diff.on('mount', function () {
   console.log(diff.directory + ' was mounted on ' + diff.mountpoint)
 
   var exit = function () {
+    setTimeout(process.kill.bind(process, process.pid), 2000).unref()
+    process.removeListener('SIGTERM', exit)
+    process.removeListener('SIGINT', exit)
     diff.unmount(function () {
       process.exit()
     })
   }
 
+  process.on('SIGTERM', exit)
   process.on('SIGINT', exit)
 })
