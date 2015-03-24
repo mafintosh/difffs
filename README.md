@@ -37,11 +37,7 @@ diff.on('change', function(change) {
 
 ## Dependencies
 
-On OSX you'll need the following
-
-* osx fuse, http://sourceforge.net/projects/osxfuse/files/latest/download?source=files
-* pkg-config, `brew install pkg-config`
-
+See [the fuse-bindings requirements](https://github.com/mafintosh/fuse-bindings#requirements)
 
 ## License
 
