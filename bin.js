@@ -27,4 +27,13 @@ diff.on('change', function(change) {
 
 diff.on('mount', function() {
   console.log(diff.directory+' was mounted on '+diff.mountpoint)
+
+  var exit = function () {
+    diff.unmount(function () {
+      process.exit()
+    })
+  }
+
+  process.on('SIGTERM', exit)
+  process.on('SIGINT', exit)
 })

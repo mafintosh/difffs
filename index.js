@@ -1,4 +1,4 @@
-var f4js = require('fuse4js')
+var fuse = require('fuse-bindings')
 var fs = require('fs')
 var path = require('path')
 var proc = require('child_process')
@@ -12,14 +12,19 @@ module.exports = function(from, mnt) {
   that.directory = from
   that.mountpoint = mnt
 
+  from = path.resolve(from)
+  mnt = path.resolve(mnt)
+
+  that.unmount = function (cb) {
+    fuse.unmount(mnt, cb)
+  }
+
   that.on('change', function(change) {
     that.emit(change.type, change)
   })
 
-  from = path.resolve(from)
-
   handlers.getattr = function(pathname, cb) {
-    fs.stat(path.join(from, pathname), function(err, st) {
+    fs.lstat(path.join(from, pathname), function(err, st) {
       if (err) return cb(-errno(err))
       cb(0, st)
     })
@@ -57,7 +62,7 @@ module.exports = function(from, mnt) {
     })
   }
 
-  handlers.read = function(pathname, offset, len, buf, handle, cb) {
+  handlers.read = function(pathname, handle, buf, len, offset, cb) {
     fs.read(handle, buf, 0, len, offset, function(err, bytes) {
       if (err) return cb(-errno(err))
       cb(bytes)
@@ -73,7 +78,7 @@ module.exports = function(from, mnt) {
     })
   }
 
-  handlers.write = function(pathname, offset, len, buf, handle, cb) {
+  handlers.write = function(pathname, handle, buf, len, offset, cb) {
     pathname = path.join(from, pathname)
     fs.write(handle, buf, 0, len, offset, function(err, bytes) {
       if (err) return cb(-errno(err))
@@ -87,6 +92,26 @@ module.exports = function(from, mnt) {
     fs.unlink(pathname, function(err) {
       if (err) return cb(-errno(err))
       that.emit('change', {type:'unlink', path:pathname})
+      cb(0)
+    })
+  }
+
+  handlers.symlink = function (src, dst, cb) {
+    dst = path.join(from, dst)
+    if (src === mnt || src.indexOf(mnt + path.sep) === 0) src = src.replace(mnt, from)
+    fs.symlink(src, dst, function(err) {
+      if (err) return cb(-errno(err))
+      that.emit('change', {type:'symlink', path:src, destination:dst})
+      cb(0)
+    })
+  }
+
+  handlers.link = function (src, dst, cb) {
+    dst = path.join(from, dst)
+    if (src === mnt || src.indexOf(mnt + path.sep) === 0) src = src.replace(mnt, from)
+    fs.link(src, dst, function(err) {
+      if (err) return cb(-errno(err))
+      that.emit('change', {type:'link', path:src, destination:dst})
       cb(0)
     })
   }
@@ -119,8 +144,22 @@ module.exports = function(from, mnt) {
     })
   }
 
-  handlers.chown = function() {
-    console.error('chown is not implemented')
+  handlers.readlink = function (pathname, cb) {
+    pathname = path.join(from, pathname)
+    fs.readlink(pathname, function(err, link) {
+      if (err) return cb(-errno(err))
+      if (link === from || link.indexOf(from + path.sep) === 0) link = link.replace(from, mnt)
+      cb(0, link)
+    })
+  }
+
+  handlers.chown = function(pathname, uid, gid, cb) {
+    pathname = path.join(from, pathname)
+    fs.chown(pathname, uid, gid, function(err) {
+      if (err) return cb(-errno(err))
+      that.emit('change', {type:'chown', path:pathname, uid:uid, gid:gid})
+      cb(0)
+    })
   }
 
   handlers.chmod = function(pathname, mode, cb) {
@@ -141,15 +180,7 @@ module.exports = function(from, mnt) {
     })
   }
 
-  handlers.getxattr = function(pathname, cb) {
-    cb(-errno(err))
-  }
-
-  handlers.setxattr = function(pathname, name, value, size, a, b, cb) {
-    cb(0)
-  }
-
-  handlers.statfs = function(cb) {
+  handlers.statfs = function(pathname, cb) {
     cb(0, {
       bsize: 1000000,
       frsize: 1000000,
@@ -169,9 +200,12 @@ module.exports = function(from, mnt) {
     cb()
   }
 
-  proc.exec('umount '+JSON.stringify(mnt), function() {
-    f4js.start(mnt, handlers, false, [])
-    that.emit('mount')  
+  handlers.force = true
+  handlers.displayFolder = true
+
+  fuse.mount(mnt, handlers, function (err) {
+    if (err) return that.emit('error', err)
+    that.emit('mount')
   })
 
   return that

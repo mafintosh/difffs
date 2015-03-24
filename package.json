@@ -7,7 +7,7 @@
     "difffs": "./bin.js"
   },
   "dependencies": {
-    "fuse4js": "bcle/fuse4js",
+    "fuse-bindings": "^2.0.1",
     "minimist": "^1.1.0"
   },
   "devDependencies": {},
