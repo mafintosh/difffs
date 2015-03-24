@@ -7,13 +7,18 @@
     "difffs": "./bin.js"
   },
   "dependencies": {
-    "fuse-bindings": "^2.0.1",
+    "fuse-bindings": "^2.1.0",
     "minimist": "^1.1.0"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "standard": "^3.2.1"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/mafintosh/difffs.git"
+  },
+  "scripts": {
+    "test": "standard"
   },
   "author": "Mathias Buus (@mafintosh)",
   "license": "MIT",
