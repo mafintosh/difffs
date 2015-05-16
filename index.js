@@ -24,7 +24,7 @@ module.exports = function (from, mnt) {
 
   handlers.mknod = function (pathname, mode, dev, cb) {
     pathname = path.join(from, pathname)
-    mknod(path, mode, dev, function (err) {
+    mknod(pathname, mode, dev, function (err) {
       if (err) return cb(fuse.EPERM)
       that.emit('change', {type: 'mknod', path: pathname, mode: mode, dev: dev})
       cb(0)
@@ -33,6 +33,13 @@ module.exports = function (from, mnt) {
 
   handlers.getattr = function (pathname, cb) {
     fs.lstat(path.join(from, pathname), function (err, st) {
+      if (err) return cb(fuse.errno(err.code))
+      cb(0, st)
+    })
+  }
+
+  handlers.fgetattr = function (pathname, fd, cb) {
+    fs.lstat(fd, function (err, st) {
       if (err) return cb(fuse.errno(err.code))
       cb(0, st)
     })
@@ -163,19 +170,55 @@ module.exports = function (from, mnt) {
 
   handlers.chown = function (pathname, uid, gid, cb) {
     pathname = path.join(from, pathname)
-    fs.chown(pathname, uid, gid, function (err) {
+
+    var done = function (err) {
       if (err) return cb(fuse.errno(err.code))
       that.emit('change', {type: 'chown', path: pathname, uid: uid, gid: gid})
       cb(0)
+    }
+
+    fs.chown(pathname, uid, gid, function (err) {
+      if (!err) return done()
+      fs.lstat(pathname, function (_, st) {
+        if (st && st.isSymbolicLink()) return done()
+        done(err)
+      })
     })
   }
 
   handlers.chmod = function (pathname, mode, cb) {
     pathname = path.join(from, pathname)
-    fs.chmod(pathname, mode, function (err) {
+
+    var done = function (err) {
       if (err) return cb(fuse.errno(err.code))
       that.emit('change', {type: 'chmod', path: pathname, mode: mode})
       cb(0)
+    }
+
+    fs.chmod(pathname, mode, function (err) {
+      if (!err) return done()
+      fs.lstat(pathname, function (_, st) {
+        if (st && st.isSymbolicLink()) return done()
+        done(err)
+      })
+    })
+  }
+
+  handlers.utimens = function (pathname, atime, mtime, cb) {
+    pathname = path.join(from, pathname)
+
+    var done = function (err) {
+      if (err) return cb(fuse.errno(err.code))
+      that.emit('change', {type: 'utimes', path: pathname, atime: atime, mtime: mtime})
+      cb(0)
+    }
+
+    fs.utimes(pathname, atime, mtime, function (err) {
+      if (!err) return done()
+      fs.lstat(pathname, function (_, st) {
+        if (st && st.isSymbolicLink()) return done()
+        done(err)
+      })
     })
   }
 
@@ -208,6 +251,7 @@ module.exports = function (from, mnt) {
     cb()
   }
 
+  handlers.options = ['suid', 'dev']
   handlers.force = true
   handlers.displayFolder = true
 
