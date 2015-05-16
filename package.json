@@ -7,8 +7,9 @@
     "difffs": "./bin.js"
   },
   "dependencies": {
-    "fuse-bindings": "^2.1.2",
-    "minimist": "^1.1.0"
+    "fuse-bindings": "^2.4.0",
+    "minimist": "^1.1.1",
+    "mknod": "^1.0.1"
   },
   "devDependencies": {
     "standard": "^3.2.1"

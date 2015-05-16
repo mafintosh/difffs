@@ -1,4 +1,5 @@
 var fuse = require('fuse-bindings')
+var mknod = require('mknod')
 var fs = require('fs')
 var path = require('path')
 var events = require('events')
@@ -20,6 +21,15 @@ module.exports = function (from, mnt) {
   that.on('change', function (change) {
     that.emit(change.type, change)
   })
+
+  handlers.mknod = function (pathname, mode, dev, cb) {
+    pathname = path.join(from, pathname)
+    mknod(path, mode, dev, function (err) {
+      if (err) return cb(fuse.EPERM)
+      that.emit('change', {type: 'mknod', path: pathname, mode: mode, dev: dev})
+      cb(0)
+    })
+  }
 
   handlers.getattr = function (pathname, cb) {
     fs.lstat(path.join(from, pathname), function (err, st) {
