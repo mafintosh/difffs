@@ -3,6 +3,7 @@ var mknod = require('mknod')
 var fs = require('fs')
 var path = require('path')
 var events = require('events')
+var constants = require('constants')
 
 module.exports = function (from, mnt) {
   var handlers = {}
@@ -52,20 +53,11 @@ module.exports = function (from, mnt) {
     })
   }
 
-  var toFlag = function (flags) {
-    flags = flags & 3
-    if (flags === 0) return 'r'
-    if (flags === 1) return 'w'
-    return 'r+'
-  }
-
   handlers.open = function (pathname, flags, cb) {
     pathname = path.join(from, pathname)
-    flags = toFlag(flags)
-
     fs.open(pathname, flags, function (err, fd) {
       if (err) return cb(fuse.errno(err.code))
-      if (flags === 'w') that.emit('change', {type: 'create', path: pathname})
+      if (flags & constants.O_TRUNC && !(flags & constants.O_EXCL)) that.emit('change', {type: 'truncate', path: pathname, size: 0})
       cb(0, fd)
     })
   }
@@ -122,8 +114,8 @@ module.exports = function (from, mnt) {
   }
 
   handlers.link = function (src, dst, cb) {
+    src = path.join(from, src)
     dst = path.join(from, dst)
-    if (src === mnt || src.indexOf(mnt + path.sep) === 0) src = src.replace(mnt, from)
     fs.link(src, dst, function (err) {
       if (err) return cb(fuse.errno(err.code))
       that.emit('change', {type: 'link', path: src, destination: dst})
@@ -224,7 +216,7 @@ module.exports = function (from, mnt) {
 
   handlers.create = function (pathname, mode, cb) {
     pathname = path.join(from, pathname)
-    fs.open(pathname, 'a', mode, function (err, fd) {
+    fs.open(pathname, 'wx', mode, function (err, fd) {
       if (err) return cb(fuse.errno(err.code))
       that.emit('change', {type: 'create', path: pathname, mode: mode})
       cb(0, fd)
