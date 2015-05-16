@@ -39,7 +39,7 @@ module.exports = function (from, mnt) {
   }
 
   handlers.fgetattr = function (pathname, fd, cb) {
-    fs.lstat(fd, function (err, st) {
+    fs.fstat(fd, function (err, st) {
       if (err) return cb(fuse.errno(err.code))
       cb(0, st)
     })
