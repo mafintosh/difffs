@@ -162,54 +162,36 @@ module.exports = function (from, mnt) {
 
   handlers.chown = function (pathname, uid, gid, cb) {
     pathname = path.join(from, pathname)
-
-    var done = function (err) {
-      if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'chown', path: pathname, uid: uid, gid: gid})
-      cb(0)
-    }
-
-    fs.chown(pathname, uid, gid, function (err) {
-      if (!err) return done()
-      fs.lstat(pathname, function (_, st) {
-        if (st && st.isSymbolicLink()) return done()
-        done(err)
+    fs.lstat(pathname, function (_, st) {
+      if (st && st.isSymbolicLink()) return cb(0)
+      fs.chown(pathname, uid, gid, function (err) {
+        if (err) return cb(fuse.errno(err.code))
+        that.emit('change', {type: 'chown', path: pathname, uid: uid, gid: gid})
+        cb(0)
       })
     })
   }
 
   handlers.chmod = function (pathname, mode, cb) {
     pathname = path.join(from, pathname)
-
-    var done = function (err) {
-      if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'chmod', path: pathname, mode: mode})
-      cb(0)
-    }
-
-    fs.chmod(pathname, mode, function (err) {
-      if (!err) return done()
-      fs.lstat(pathname, function (_, st) {
-        if (st && st.isSymbolicLink()) return done()
-        done(err)
+    fs.lstat(pathname, function (_, st) {
+      if (st && st.isSymbolicLink()) return cb(0)
+      fs.chmod(pathname, mode, function (err) {
+        if (err) return cb(fuse.errno(err.code))
+        that.emit('change', {type: 'chmod', path: pathname, mode: mode})
+        cb(0)
       })
     })
   }
 
   handlers.utimens = function (pathname, atime, mtime, cb) {
     pathname = path.join(from, pathname)
-
-    var done = function (err) {
-      if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'utimes', path: pathname, atime: atime, mtime: mtime})
-      cb(0)
-    }
-
-    fs.utimes(pathname, atime, mtime, function (err) {
-      if (!err) return done()
-      fs.lstat(pathname, function (_, st) {
-        if (st && st.isSymbolicLink()) return done()
-        done(err)
+    fs.lstat(pathname, function (_, st) {
+      if (st && st.isSymbolicLink()) return cb(0)
+      fs.utimes(pathname, atime, mtime, function (err) {
+        if (err) return cb(fuse.errno(err.code))
+        that.emit('change', {type: 'utimes', path: pathname, atime: atime, mtime: mtime})
+        cb(0)
       })
     })
   }
