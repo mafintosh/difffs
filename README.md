@@ -28,9 +28,10 @@ You can also use it as a node module
 ``` js
 var difffs = require('difffs')
 
+// diff is a readable stream of changes
 var diff = difffs('/Users/maf', '/tmp/mnt')
 
-diff.on('change', function(change) {
+diff.on('data', function (change) {
   console.log('the filesystem changed', change)
 })
 ```

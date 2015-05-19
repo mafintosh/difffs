@@ -2,33 +2,55 @@ var fuse = require('fuse-bindings')
 var mknod = require('mknod')
 var fs = require('fs')
 var path = require('path')
-var events = require('events')
+var stream = require('readable-stream')
 var constants = require('constants')
 
-module.exports = function (from, mnt) {
-  var handlers = {}
-  var that = new events.EventEmitter()
+module.exports = function (from, mnt, opts) {
+  if (!opts) opts = {}
+  opts.objectMode = true
 
-  that.directory = from
-  that.mountpoint = mnt
+  var utimes = opts.utimes !== false
+  var handlers = {}
+  var that = new stream.PassThrough(opts)
 
   from = path.resolve(from)
   mnt = path.resolve(mnt)
 
+  that.directory = from
+  that.mountpoint = mnt
+
   that.unmount = function (cb) {
-    fuse.unmount(mnt, cb)
+    fuse.unmount(mnt, function (err) {
+      that.end()
+      if (cb) cb(err)
+    })
   }
 
-  that.on('change', function (change) {
-    that.emit(change.type, change)
+  that.on('close', function () {
+    that.emit('unmount')
   })
+
+  that.on('finish', function () {
+    that.emit('unmount')
+  })
+
+  that.destroyed = false
+  that.destroy = function (err) {
+    fuse.unmount(mnt, function (unmountErr) {
+      if (that.destroyed) return
+      that.destroyed = true
+      if (err) that.emit('error', unmountErr || err)
+      that.emit('close')
+    })
+  }
 
   handlers.mknod = function (pathname, mode, dev, cb) {
     pathname = path.join(from, pathname)
     mknod(pathname, mode, dev, function (err) {
       if (err) return cb(fuse.EPERM)
-      that.emit('change', {type: 'mknod', path: pathname, mode: mode, dev: dev})
-      cb(0)
+      that.write({path: pathname, type: 'mknod', mode: mode, dev: dev}, function () {
+        cb(0)
+      })
     })
   }
 
@@ -57,8 +79,13 @@ module.exports = function (from, mnt) {
     pathname = path.join(from, pathname)
     fs.open(pathname, flags, function (err, fd) {
       if (err) return cb(fuse.errno(err.code))
-      if (flags & constants.O_TRUNC && !(flags & constants.O_EXCL)) that.emit('change', {type: 'truncate', path: pathname, size: 0})
-      cb(0, fd)
+
+      var done = function () {
+        cb(0, fd)
+      }
+
+      if (flags & constants.O_TRUNC && !(flags & constants.O_EXCL)) that.write({path: pathname, type: 'truncate', size: 0}, done)
+      else done()
     })
   }
 
@@ -80,8 +107,9 @@ module.exports = function (from, mnt) {
     pathname = path.join(from, pathname)
     fs.truncate(pathname, function (err) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'truncate', path: pathname, size: size})
-      cb(0)
+      that.write({path: pathname, type: 'truncate', size: size}, function () {
+        cb(0)
+      })
     })
   }
 
@@ -89,8 +117,11 @@ module.exports = function (from, mnt) {
     pathname = path.join(from, pathname)
     fs.write(handle, buf, 0, len, offset, function (err, bytes) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'write', path: pathname, offset: offset, bytes: bytes, data: buf})
-      cb(bytes)
+      var copy = new Buffer(bytes) // copy needed as fuse overrides this buffer
+      buf.copy(copy)
+      that.write({path: pathname, type: 'write', offset: offset, data: copy}, function () {
+        cb(bytes)
+      })
     })
   }
 
@@ -98,8 +129,9 @@ module.exports = function (from, mnt) {
     pathname = path.join(from, pathname)
     fs.unlink(pathname, function (err) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'unlink', path: pathname})
-      cb(0)
+      that.write({path: pathname, type: 'unlink'}, function () {
+        cb(0)
+      })
     })
   }
 
@@ -108,8 +140,9 @@ module.exports = function (from, mnt) {
     if (src === mnt || src.indexOf(mnt + path.sep) === 0) src = src.replace(mnt, from)
     fs.symlink(src, dst, function (err) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'symlink', path: src, destination: dst})
-      cb(0)
+      that.write({path: src, type: 'symlink', destination: dst}, function () {
+        cb(0)
+      })
     })
   }
 
@@ -118,8 +151,9 @@ module.exports = function (from, mnt) {
     dst = path.join(from, dst)
     fs.link(src, dst, function (err) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'link', path: src, destination: dst})
-      cb(0)
+      that.write({path: src, type: 'link', destination: dst}, function () {
+        cb(0)
+      })
     })
   }
 
@@ -128,8 +162,9 @@ module.exports = function (from, mnt) {
     dst = path.join(from, dst)
     fs.rename(src, dst, function (err) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'rename', path: src, destination: dst})
-      cb(0)
+      that.write({path: src, type: 'rename', destination: dst}, function () {
+        cb(0)
+      })
     })
   }
 
@@ -137,8 +172,9 @@ module.exports = function (from, mnt) {
     pathname = path.join(from, pathname)
     fs.mkdir(pathname, mode, function (err) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'mkdir', path: pathname, mode: mode})
-      cb(0)
+      that.write({path: pathname, type: 'mkdir', mode: mode}, function () {
+        cb(0)
+      })
     })
   }
 
@@ -146,8 +182,9 @@ module.exports = function (from, mnt) {
     pathname = path.join(from, pathname)
     fs.rmdir(pathname, function (err) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'rmdir', path: pathname})
-      cb(0)
+      that.write({path: pathname, type: 'rmdir'}, function () {
+        cb(0)
+      })
     })
   }
 
@@ -166,8 +203,9 @@ module.exports = function (from, mnt) {
       if (st && st.isSymbolicLink()) return cb(0)
       fs.chown(pathname, uid, gid, function (err) {
         if (err) return cb(fuse.errno(err.code))
-        that.emit('change', {type: 'chown', path: pathname, uid: uid, gid: gid})
-        cb(0)
+        that.write({path: pathname, type: 'chown', uid: uid, gid: gid}, function () {
+          cb(0)
+        })
       })
     })
   }
@@ -178,8 +216,9 @@ module.exports = function (from, mnt) {
       if (st && st.isSymbolicLink()) return cb(0)
       fs.chmod(pathname, mode, function (err) {
         if (err) return cb(fuse.errno(err.code))
-        that.emit('change', {type: 'chmod', path: pathname, mode: mode})
-        cb(0)
+        that.write({path: pathname, type: 'chmod', mode: mode}, function () {
+          cb(0)
+        })
       })
     })
   }
@@ -190,8 +229,10 @@ module.exports = function (from, mnt) {
       if (st && st.isSymbolicLink()) return cb(0)
       fs.utimes(pathname, atime, mtime, function (err) {
         if (err) return cb(fuse.errno(err.code))
-        that.emit('change', {type: 'utimes', path: pathname, atime: atime, mtime: mtime})
-        cb(0)
+        if (!utimes) return cb(0)
+        that.write({path: pathname, type: 'utimes', atime: atime, mtime: mtime}, function () {
+          cb(0)
+        })
       })
     })
   }
@@ -200,8 +241,9 @@ module.exports = function (from, mnt) {
     pathname = path.join(from, pathname)
     fs.open(pathname, 'wx', mode, function (err, fd) {
       if (err) return cb(fuse.errno(err.code))
-      that.emit('change', {type: 'create', path: pathname, mode: mode})
-      cb(0, fd)
+      that.write({path: pathname, type: 'create', mode: mode}, function () {
+        cb(0, fd)
+      })
     })
   }
 
@@ -230,7 +272,7 @@ module.exports = function (from, mnt) {
   handlers.displayFolder = true
 
   fuse.mount(mnt, handlers, function (err) {
-    if (err) return that.emit('error', err)
+    if (err) return that.destroy(err)
     that.emit('mount')
   })
 

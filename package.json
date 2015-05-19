@@ -9,7 +9,8 @@
   "dependencies": {
     "fuse-bindings": "^2.4.0",
     "minimist": "^1.1.1",
-    "mknod": "^1.0.1"
+    "mknod": "^1.0.1",
+    "readable-stream": "^1.1.13"
   },
   "devDependencies": {
     "standard": "^3.2.1"
