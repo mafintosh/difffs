@@ -6,6 +6,11 @@ var difffs = require('./')
 
 var argv = minimist(process.argv.slice(2))
 
+if (argv.version || argv.v) {
+  console.log(require('./package.json').version)
+  process.exit(0)
+}
+
 if (argv._.length < 2 || argv.help) {
   console.log('Usage: difffs [directory] [mountpoint]')
   process.exit(1)
