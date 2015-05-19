@@ -31,6 +31,7 @@ var difffs = require('difffs')
 // diff is a readable stream of changes
 var diff = difffs('/Users/maf', '/tmp/mnt')
 
+// remember to drain the stream - otherwise the fs will block
 diff.on('data', function (change) {
   console.log('the filesystem changed', change)
 })
