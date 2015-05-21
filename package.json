@@ -1,6 +1,6 @@
 {
   "name": "difffs",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "fuse based filesystem that notifies you when changes happen",
   "main": "index.js",
   "bin": {
