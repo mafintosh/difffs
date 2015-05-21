@@ -257,7 +257,7 @@ module.exports = function (from, mnt, opts) {
 
   handlers.create = function (pathname, mode, cb) {
     pathname = path.join(from, pathname)
-    fs.open(pathname, 'wx', mode, function (err, fd) {
+    fs.open(pathname, 'wx+', mode, function (err, fd) {
       if (err) return cb(fuse.errno(err.code))
       that.write({path: pathname, type: 'create', mode: mode}, function () {
         cb(0, fd)
