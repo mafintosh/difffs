@@ -105,7 +105,7 @@ module.exports = function (from, mnt, opts) {
 
   handlers.truncate = function (pathname, size, cb) {
     pathname = path.join(from, pathname)
-    fs.truncate(pathname, function (err) {
+    fs.truncate(pathname, size, function (err) {
       if (err) return cb(fuse.errno(err.code))
       that.write({path: pathname, type: 'truncate', size: size}, function () {
         cb(0)
@@ -115,7 +115,7 @@ module.exports = function (from, mnt, opts) {
 
   handlers.ftruncate = function (pathname, fd, size, cb) {
     pathname = path.join(from, pathname)
-    fs.ftruncate(fd, function (err) {
+    fs.ftruncate(fd, size, function (err) {
       if (err) return cb(fuse.errno(err.code))
       that.write({path: pathname, type: 'truncate', size: size}, function () {
         cb(0)
