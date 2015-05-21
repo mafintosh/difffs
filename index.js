@@ -113,6 +113,24 @@ module.exports = function (from, mnt, opts) {
     })
   }
 
+  handlers.ftruncate = function (pathname, fd, size, cb) {
+    pathname = path.join(from, pathname)
+    fs.ftruncate(fd, function (err) {
+      if (err) return cb(fuse.errno(err.code))
+      that.write({path: pathname, type: 'truncate', size: size}, function () {
+        cb(0)
+      })
+    })
+  }
+
+  handlers.fsync = function (pathname, fd, datasync, cb) {
+    pathname = path.join(from, pathname)
+    fs.fsync(fd, function (err) {
+      if (err) return cb(fuse.errno(err.code))
+      cb(0)
+    })
+  }
+
   handlers.write = function (pathname, handle, buf, len, offset, cb) {
     pathname = path.join(from, pathname)
     fs.write(handle, buf, 0, len, offset, function (err, bytes) {
